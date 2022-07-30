@@ -32,6 +32,10 @@
 
 #define RECV_BUFFER_SIZE 4096
 
+struct http_service daemon = {.is_stopped = false};
+extern struct workqueue_struct *khttpd_wq;
+extern bool bench;
+
 struct http_request {
     struct socket *socket;
     enum http_method method;
@@ -141,8 +145,9 @@ static int http_parser_callback_message_complete(http_parser *parser)
     return 0;
 }
 
-static int http_server_worker(void *arg)
+static int http_server_worker(struct work_struct *work)
 {
+    struct khttp *worker = container_of(work, struct khttp, khttpd_work);
     char *buf;
     struct http_parser parser;
     struct http_parser_settings setting = {
@@ -154,7 +159,7 @@ static int http_server_worker(void *arg)
         .on_body = http_parser_callback_body,
         .on_message_complete = http_parser_callback_message_complete};
     struct http_request request;
-    struct socket *socket = (struct socket *) arg;
+    struct socket *socket = worker->sock;
 
     allow_signal(SIGKILL);
     allow_signal(SIGTERM);
@@ -178,7 +183,6 @@ static int http_server_worker(void *arg)
         http_parser_execute(&parser, &setting, buf, ret);
         if (request.complete && !http_should_keep_alive(&parser))
             break;
-        memset(buf, 0, RECV_BUFFER_SIZE);
     }
     kernel_sock_shutdown(socket, SHUT_RDWR);
     sock_release(socket);
@@ -189,7 +193,7 @@ static int http_server_worker(void *arg)
 int http_server_daemon(void *arg)
 {
     struct socket *socket;
-    struct task_struct *worker;
+    struct work_struct *worker;
     struct http_server_param *param = (struct http_server_param *) arg;
 
     allow_signal(SIGKILL);
@@ -203,11 +207,16 @@ int http_server_daemon(void *arg)
             pr_err("kernel_accept() error: %d\n", err);
             continue;
         }
-        worker = kthread_run(http_server_worker, socket, KBUILD_MODNAME);
-        if (IS_ERR(worker)) {
-            pr_err("can't create more worker process\n");
+        if (unlikely(!(work = create_work(socket)))) {
+            pr_err("create work error, connection closed\n");
+            kernel_sock_shutdown(socket, SHUT_RDWR);
+            sock_release(socket);
             continue;
         }
+        queue_work(khttpd_wq, work);
     }
+    pr_err("daemon shutdown in progress...\n");
+    daemon.is_stopped = true;
+    free_work();
     return 0;
 }
