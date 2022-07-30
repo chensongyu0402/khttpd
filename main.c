@@ -11,10 +11,14 @@
 #define DEFAULT_PORT 8081
 #define DEFAULT_BACKLOG 100
 
+struct workqueue_struct *khttpd_wq;
+
 static ushort port = DEFAULT_PORT;
 module_param(port, ushort, S_IRUGO);
 static ushort backlog = DEFAULT_BACKLOG;
 module_param(backlog, ushort, S_IRUGO);
+bool bench = false;
+module_param(bench, bool, S_IRUGO);
 
 static struct socket *listen_socket;
 static struct http_server_param param;
@@ -160,6 +164,7 @@ static int __init khttpd_init(void)
         return err;
     }
     param.listen_socket = listen_socket;
+    khttpd_wq = alloc_workqueue(MODULE_NAME, bench ? 0 : WQ_UNBOUND, 0)
     http_server = kthread_run(http_server_daemon, &param, KBUILD_MODNAME);
     if (IS_ERR(http_server)) {
         pr_err("can't start http server daemon\n");
