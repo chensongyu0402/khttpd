@@ -164,7 +164,7 @@ static int __init khttpd_init(void)
         return err;
     }
     param.listen_socket = listen_socket;
-    khttpd_wq = alloc_workqueue(MODULE_NAME, bench ? 0 : WQ_UNBOUND, 0)
+    khttpd_wq = alloc_workqueue(MODULE_NAME, bench ? 0 : WQ_UNBOUND, 0);
     http_server = kthread_run(http_server_daemon, &param, KBUILD_MODNAME);
     if (IS_ERR(http_server)) {
         pr_err("can't start http server daemon\n");
