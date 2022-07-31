@@ -147,7 +147,7 @@ static int http_parser_callback_message_complete(http_parser *parser)
 
 static int http_server_worker(struct work_struct *work)
 {
-    struct khttp *worker = container_of(work, struct khttp, khttpd_work);
+    struct khttpd *worker = container_of(work, struct khttp, khttpd_work);
     char *buf;
     struct http_parser parser;
     struct http_parser_settings setting = {
