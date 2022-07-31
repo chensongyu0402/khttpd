@@ -145,7 +145,7 @@ static int http_parser_callback_message_complete(http_parser *parser)
     return 0;
 }
 
-static int http_server_worker(struct work_struct *work)
+static void http_server_worker(struct work_struct *work)
 {
     struct khttpd *worker = container_of(work, struct khttpd, khttpd_work);
     char *buf;
@@ -167,7 +167,7 @@ static int http_server_worker(struct work_struct *work)
     buf = kzalloc(RECV_BUFFER_SIZE, GFP_KERNEL);
     if (!buf) {
         pr_err("can't allocate memory!\n");
-        return -1;
+        return;
     }
 
     request.socket = socket;
@@ -187,7 +187,7 @@ static int http_server_worker(struct work_struct *work)
     kernel_sock_shutdown(socket, SHUT_RDWR);
     sock_release(socket);
     kfree(buf);
-    return 0;
+    return;
 }
 
 static struct work_struct *create_work(struct socket *sk)
@@ -203,7 +203,7 @@ static struct work_struct *create_work(struct socket *sk)
 
 static void free_work(void)
 {
-    struct khtttpd *l, *tar;
+    struct khttpd *l, *tar;
     list_for_each_entry_safe (tar, l, &daemon.worker, list) {
         kernel_sock_shutdown(tar->sock, SHUT_RDWR);
         flush_work(&tar->khttpd_work);
