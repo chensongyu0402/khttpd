@@ -190,14 +190,38 @@ static int http_server_worker(struct work_struct *work)
     return 0;
 }
 
+static struct work_struct *create_work(struct socket *sk)
+{
+    struct khttpd *work;
+    if (!(work = kmalloc(sizeof(struct khttpd), GFP_KERNEL)))
+        return NULL;
+    work->sock = sk;
+    INIT_WORK(&work->khttpd_work, http_server_worker);
+    list_add(&work->list, &daemon.worker);
+    return &work->khttpd_work;
+}
+
+static void free_work(void)
+{
+    struct khtttpd *l, *tar;
+    list_for_each_entry_safe (tar, l, &daemon.worker, list) {
+        kernel_sock_shutdown(tar->sock, SHUT_RDWR);
+        flush_work(&tar->khttpd_work);
+        sock_release(tar->sock);
+        kfree(tar);
+    }
+}
+
 int http_server_daemon(void *arg)
 {
     struct socket *socket;
-    struct work_struct *worker;
+    struct work_struct *work;
     struct http_server_param *param = (struct http_server_param *) arg;
 
     allow_signal(SIGKILL);
     allow_signal(SIGTERM);
+
+    INIT_LIST_HEAD(&daemon.worker);
 
     while (!kthread_should_stop()) {
         int err = kernel_accept(param->listen_socket, &socket, 0);
