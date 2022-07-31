@@ -21,7 +21,7 @@ htstress: htstress.c
 	$(CC) $(CFLAGS_user) -o $@ $< $(LDFLAGS_user)
 
 check: all
-    make htstress
+	make htstress
 	@scripts/test.sh
 
 load: all
