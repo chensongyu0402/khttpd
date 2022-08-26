@@ -1,15 +1,16 @@
 # khttpd
-
+###### tags: `github_project`
+## Introduce
 `khttpd` is an experimental HTTP server implemented as Linux kernel module.
 The server defaults to port 8081, but this can be easily configured using
 command line argument `port=?` when you are about to load the kernel module.
 
-## TODO
-* Release resources when HTTP connection is about to be closed.
-* Introduce CMWQ.
-* Improve memory management.
-* Request queue and/or cache
-
+## Improvement
+- Use cmwq to improve parallel efficiency and reduce the cost of additional kthread creation
+- Use signal to terminate khttpd properly
+- Use htstress to evaluate khttpd web server
+## Result
+- ![](https://i.imgur.com/snkPgFm.png)
 ## License
 
 `khttpd` is released under the MIT License. Use of this source code is governed by
